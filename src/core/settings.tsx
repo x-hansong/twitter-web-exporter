@@ -8,6 +8,7 @@ import {
   IconDatabaseExport,
   IconTrashX,
   IconReportAnalytics,
+  IconRefresh,
 } from '@tabler/icons-preact';
 import { GM_registerMenuCommand } from '$';
 
@@ -20,11 +21,15 @@ import { saveFile } from '@/utils/exporter';
 import { db } from './database';
 import extensionManager from './extensions';
 import { DEFAULT_APP_OPTIONS, options, THEMES } from './options';
+import { syncManager } from './sync';
 
 export function Settings() {
   const { t, i18n } = useTranslation();
 
   const currentTheme = useSignal(options.get('theme'));
+  const syncEnabled = useSignal(!!options.get('syncEnabled'));
+  const supabaseUrl = useSignal(options.get('supabaseUrl', ''));
+  const supabaseAnonKey = useSignal(options.get('supabaseAnonKey', ''));
   const [showSettings, toggleSettings] = useToggle(false);
 
   const styles = {
@@ -200,6 +205,57 @@ export function Settings() {
                 {t('Clear DB')}
               </button>
             </div>
+          </div>
+        </div>
+        <p class={styles.subtitle}>{t('Supabase Sync')}</p>
+        <div class={cx(styles.block, 'flex-col')}>
+          <label class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Enable Supabase Sync')}</span>
+            <input
+              type="checkbox"
+              class="toggle toggle-primary"
+              checked={syncEnabled.value}
+              onChange={(e) => {
+                syncEnabled.value = (e.target as HTMLInputElement)?.checked;
+                options.set('syncEnabled', syncEnabled.value);
+              }}
+            />
+          </label>
+          <label class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Supabase URL')}</span>
+            <input
+              type="text"
+              class="input input-bordered input-xs w-48"
+              value={supabaseUrl.value}
+              onChange={(e) => {
+                supabaseUrl.value = (e.target as HTMLInputElement)?.value ?? '';
+                options.set('supabaseUrl', supabaseUrl.value.trim());
+              }}
+            />
+          </label>
+          <label class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Supabase Anon Key')}</span>
+            <input
+              type="password"
+              class="input input-bordered input-xs w-48"
+              value={supabaseAnonKey.value}
+              onChange={(e) => {
+                supabaseAnonKey.value = (e.target as HTMLInputElement)?.value ?? '';
+                options.set('supabaseAnonKey', supabaseAnonKey.value.trim());
+              }}
+            />
+          </label>
+          <div class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Manual Sync')}</span>
+            <button
+              class="btn btn-xs btn-secondary"
+              onClick={async () => {
+                await syncManager.runNow();
+              }}
+            >
+              <IconRefresh size={20} />
+              {t('Sync Now')}
+            </button>
           </div>
         </div>
         {/* Enable or disable modules. */}

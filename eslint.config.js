@@ -11,6 +11,15 @@ export default tseslint.config(
     files: ['**/*.ts', '**/*.tsx'],
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     ignores: ['dist', 'node_modules'],
   },
 );
