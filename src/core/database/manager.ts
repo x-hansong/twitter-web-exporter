@@ -12,7 +12,7 @@ import { ExtensionType } from '../extensions';
 import { options } from '../options';
 
 const DB_NAME = packageJson.name;
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 declare global {
   interface Window {
@@ -25,13 +25,14 @@ declare global {
 
 export class DatabaseManager {
   private db: Dexie;
+  private userId: string;
 
   constructor() {
-    const globalObject = unsafeWindow ?? window ?? globalThis;
-    const userId = globalObject.__META_DATA__?.userId ?? 'unknown';
+    const userId = this.resolveUserId();
     const suffix = options.get('dedicatedDbForAccounts') ? `_${userId}` : '';
     logger.debug(`Using database: ${DB_NAME}${suffix} for userId: ${userId}`);
 
+    this.userId = userId;
     this.db = new Dexie(`${DB_NAME}${suffix}`);
     this.init();
   }
@@ -66,6 +67,14 @@ export class DatabaseManager {
 
   async extGetCaptureCount(extName: string) {
     return this.captures().where('extension').equals(extName).count().catch(this.logError);
+  }
+
+  getCurrentUserId() {
+    const resolved = this.resolveUserId();
+    if (resolved && resolved !== 'unknown') {
+      this.userId = resolved;
+    }
+    return this.userId;
   }
 
   async extGetCapturedTweets(extName: string) {
@@ -198,6 +207,46 @@ export class DatabaseManager {
     }
   }
 
+  async getUpdatedTweetsSince(timestamp: number) {
+    return this.tweets()
+      .where('twe_private_fields.updated_at')
+      .above(timestamp)
+      .toArray()
+      .catch(this.logError);
+  }
+
+  async getUpdatedUsersSince(timestamp: number) {
+    return this.users()
+      .where('twe_private_fields.updated_at')
+      .above(timestamp)
+      .toArray()
+      .catch(this.logError);
+  }
+
+  async getCapturesByDataKeys(dataKeys: string[]) {
+    if (dataKeys.length === 0) {
+      return [];
+    }
+
+    const dedupedDataKeys = [...new Set(dataKeys)];
+    const chunkSize = 500;
+    const captures: Capture[] = [];
+
+    for (let i = 0; i < dedupedDataKeys.length; i += chunkSize) {
+      const chunk = dedupedDataKeys.slice(i, i + chunkSize);
+      const records = await this.captures()
+        .where('data_key')
+        .anyOf(chunk)
+        .toArray()
+        .catch(this.logError);
+      if (records?.length) {
+        captures.push(...records);
+      }
+    }
+
+    return captures;
+  }
+
   /*
   |--------------------------------------------------------------------------
   | Common Methods
@@ -312,6 +361,7 @@ export class DatabaseManager {
       'id',
       'extension',
       'type',
+      'data_key',
       'created_at',
       'sort_index',
     ];
@@ -370,5 +420,39 @@ export class DatabaseManager {
 
   logError(error: unknown) {
     logger.error(`Database Error: ${(error as Error).message}`, error);
+  }
+
+  private resolveUserId() {
+    const globalObject = unsafeWindow ?? window ?? globalThis;
+    const metaUserId = globalObject.__META_DATA__?.userId;
+    if (metaUserId) {
+      return metaUserId;
+    }
+
+    const twid = this.getCookieValue('twid');
+    if (twid) {
+      const normalized = this.safeDecodeURIComponent(twid).replace(/^u=/, '').trim();
+      if (normalized) {
+        return normalized;
+      }
+    }
+
+    return 'unknown';
+  }
+
+  private getCookieValue(name: string) {
+    const cookie = document.cookie || '';
+    const escapedName = name.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&');
+    const match = cookie.match(new RegExp(`(?:^|; )${escapedName}=([^;]*)`));
+    return match ? match[1] : null;
+  }
+
+  private safeDecodeURIComponent(value: string) {
+    try {
+      return decodeURIComponent(value);
+    } catch (error) {
+      logger.warn(`Failed to decode cookie value: ${(error as Error).message}`);
+      return value;
+    }
   }
 }

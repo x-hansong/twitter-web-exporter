@@ -15,6 +15,9 @@ export interface AppOptions {
   filenamePattern?: string;
   language?: string;
   dedicatedDbForAccounts?: boolean;
+  syncEnabled?: boolean;
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
   version?: string;
 }
 
@@ -35,6 +38,9 @@ export const DEFAULT_APP_OPTIONS: AppOptions = {
   filenamePattern: '{screen_name}_{id}_{type}_{num}_{date}.{ext}',
   language: '',
   dedicatedDbForAccounts: false,
+  syncEnabled: false,
+  supabaseUrl: '',
+  supabaseAnonKey: '',
   version: packageJson.version,
 };
 
