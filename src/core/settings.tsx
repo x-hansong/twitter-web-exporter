@@ -14,6 +14,7 @@ import { GM_registerMenuCommand } from '$';
 
 import packageJson from '@/../package.json';
 import { Modal } from '@/components/common';
+import { BatchCaptureModal } from '@/components/modals/batch-capture';
 import { useTranslation, detectBrowserLanguage, LANGUAGES_CONFIG, TranslationKey } from '@/i18n';
 import { capitalizeFirstLetter, cx, useToggle } from '@/utils/common';
 import { saveFile } from '@/utils/exporter';
@@ -30,7 +31,9 @@ export function Settings() {
   const syncEnabled = useSignal(!!options.get('syncEnabled'));
   const supabaseUrl = useSignal(options.get('supabaseUrl', ''));
   const supabaseAnonKey = useSignal(options.get('supabaseAnonKey', ''));
+  const lzcApiAuthToken = useSignal(options.get('lzcApiAuthToken', ''));
   const [showSettings, toggleSettings] = useToggle(false);
+  const [showBatchCapture, toggleBatchCapture] = useToggle(false);
 
   const styles = {
     subtitle: 'mb-2 text-base-content ml-4 opacity-50 font-semibold text-xs',
@@ -245,6 +248,18 @@ export function Settings() {
               }}
             />
           </label>
+          <label class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Lzc API Auth Token')}</span>
+            <input
+              type="password"
+              class="input input-bordered input-xs w-48"
+              value={lzcApiAuthToken.value}
+              onChange={(e) => {
+                lzcApiAuthToken.value = (e.target as HTMLInputElement)?.value ?? '';
+                options.set('lzcApiAuthToken', lzcApiAuthToken.value.trim());
+              }}
+            />
+          </label>
           <div class={styles.item}>
             <span class="label-text whitespace-nowrap">{t('Manual Sync')}</span>
             <button
@@ -255,6 +270,16 @@ export function Settings() {
             >
               <IconRefresh size={20} />
               {t('Sync Now')}
+            </button>
+          </div>
+        </div>
+        <p class={styles.subtitle}>{t('Manual Batch Capture')}</p>
+        <div class={cx(styles.block, 'flex-col')}>
+          <div class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Run helper capture flow')}</span>
+            <button class="btn btn-xs btn-accent" onClick={toggleBatchCapture}>
+              <IconRefresh size={20} />
+              {t('Open')}
             </button>
           </div>
         </div>
@@ -293,6 +318,7 @@ export function Settings() {
           </a>
         </div>
       </Modal>
+      <BatchCaptureModal show={showBatchCapture} onClose={toggleBatchCapture} />
     </Fragment>
   );
 }

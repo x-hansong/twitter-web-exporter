@@ -54,6 +54,8 @@ If you do not see the cat button or the menu options as shown in the image, plea
 
 Click the ⚙️ Cog button to open the settings panel. You can change the UI theme and enable/disable features of script here.
 
+The settings panel also includes a manual batch capture helper for bookmarks and your own tweets. It can open the target page and auto-scroll with conservative pauses, while still relying on the Twitter/X web app to load data.
+
 Then open the page that you want to export data from. The script will automatically capture on the following pages:
 
 - User profile page (tweets, replies, media, likes)
@@ -86,7 +88,7 @@ Basically, **the script "sees" what you see on the page**. If you can't see the 
 
 Data on the web page is loaded dynamically, which means the script can't access the data until it is loaded. You need to keep scrolling down to load more data. Make sure that all data is loaded before exporting.
 
-The export process is not automated (without the help of [3rd party tools](https://github.com/prinsss/twitter-web-exporter/issues/120)). It relies on human interaction to trigger the data fetching process of the Twitter web app. The script itself does not send any request to Twitter API.
+The export process is still primarily browser-assisted. A built-in manual batch helper can automate page switching and scrolling for bookmarks and your own tweets, but it still relies on the Twitter/X web app to load data. The script itself does not send any request to Twitter API.
 
 The script does not rely on the official Twitter API and thus does not have the same rate limit. However, the Twitter web app does have its own limit. If you hit that rate limit, try again after a few minutes.
 
@@ -106,7 +108,7 @@ A. See [Content-Security-Policy (CSP) Issues #19](https://github.com/prinsss/twi
 A. The script can only export data that is loaded by the Twitter web app. Since the data is lazy-loaded, you need to keep scrolling down to load more data. For long lists, you may need to scroll down to the bottom of the page to make sure that all data is loaded before exporting.
 
 **Q. Can the exporting process be automated?** <br>
-A. No. At least not without the help of 3rd party tools like auto scrolling. See [#120](https://github.com/prinsss/twitter-web-exporter/issues/120) for community solutions.
+A. Partially. The built-in manual batch helper can assist with auto-scrolling for bookmarks and your own tweets. For other workflows, you still need to browse and load the data manually, or use 3rd party tools. See [#120](https://github.com/prinsss/twitter-web-exporter/issues/120) for community solutions.
 
 **Q. Do I need a developer account?** <br>
 A. No. The script does not send any request to Twitter API.

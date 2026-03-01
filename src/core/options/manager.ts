@@ -18,6 +18,9 @@ export interface AppOptions {
   syncEnabled?: boolean;
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  lzcApiAuthToken?: string;
+  batchCaptureMaxOperations?: number;
+  batchCaptureScrollDistanceMultiplier?: number;
   version?: string;
 }
 
@@ -41,6 +44,9 @@ export const DEFAULT_APP_OPTIONS: AppOptions = {
   syncEnabled: false,
   supabaseUrl: '',
   supabaseAnonKey: '',
+  lzcApiAuthToken: '',
+  batchCaptureMaxOperations: 5000,
+  batchCaptureScrollDistanceMultiplier: 3,
   version: packageJson.version,
 };
 
