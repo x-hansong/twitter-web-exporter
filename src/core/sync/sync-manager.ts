@@ -84,6 +84,7 @@ export class SyncManager {
 
     const url = options.get('supabaseUrl', '')?.trim();
     const key = options.get('supabaseAnonKey', '')?.trim();
+    const lzcApiAuthToken = options.get('lzcApiAuthToken', '')?.trim() ?? '';
     if (!url || !key) {
       logger.warn('Sync skipped: Supabase URL or anon key is not configured');
       return;
@@ -100,22 +101,33 @@ export class SyncManager {
     logger.info(`Sync started (${reason})`);
 
     try {
-      await this.syncWithRetry(twitterUserId, url, key);
+      await this.syncWithRetry(twitterUserId, url, key, lzcApiAuthToken);
       logger.info(`Sync completed in ${Date.now() - startAt}ms`);
     } catch (error) {
       logger.error(`Sync failed after retries: ${(error as Error).message}`, error);
-      await this.upsertSyncStateError(twitterUserId, url, key, (error as Error).message);
+      await this.upsertSyncStateError(
+        twitterUserId,
+        url,
+        key,
+        lzcApiAuthToken,
+        (error as Error).message,
+      );
     } finally {
       this.running = false;
     }
   }
 
-  private async syncWithRetry(twitterUserId: string, url: string, key: string) {
+  private async syncWithRetry(
+    twitterUserId: string,
+    url: string,
+    key: string,
+    lzcApiAuthToken: string,
+  ) {
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= SYNC_MAX_RETRIES; attempt++) {
       try {
-        await this.syncOnce(twitterUserId, url, key);
+        await this.syncOnce(twitterUserId, url, key, lzcApiAuthToken);
         return;
       } catch (error) {
         lastError = error as Error;
@@ -129,8 +141,8 @@ export class SyncManager {
     throw lastError ?? new Error('Unknown sync error');
   }
 
-  private async syncOnce(twitterUserId: string, url: string, key: string) {
-    const supabase = getSupabaseClient(url, key);
+  private async syncOnce(twitterUserId: string, url: string, key: string, lzcApiAuthToken: string) {
+    const supabase = getSupabaseClient(url, key, lzcApiAuthToken);
     const lastSyncedAt = await this.getLastSyncedAt(supabase, twitterUserId);
 
     const [tweetRecords, userRecords] = await Promise.all([
@@ -296,9 +308,10 @@ export class SyncManager {
     twitterUserId: string,
     url: string,
     key: string,
+    lzcApiAuthToken: string,
     message: string,
   ) {
-    const supabase = getSupabaseClient(url, key);
+    const supabase = getSupabaseClient(url, key, lzcApiAuthToken);
     const now = new Date().toISOString();
     const { error } = await supabase.from(TABLE_SYNC_STATE).upsert(
       {
