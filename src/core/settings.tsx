@@ -14,6 +14,7 @@ import { GM_registerMenuCommand } from '$';
 
 import packageJson from '@/../package.json';
 import { Modal } from '@/components/common';
+import { BatchCaptureModal } from '@/components/modals/batch-capture';
 import { useTranslation, detectBrowserLanguage, LANGUAGES_CONFIG, TranslationKey } from '@/i18n';
 import { capitalizeFirstLetter, cx, useToggle } from '@/utils/common';
 import { saveFile } from '@/utils/exporter';
@@ -36,7 +37,9 @@ export function Settings() {
   const minioRegion = useSignal(options.get('minioRegion', 'us-east-1'));
   const minioAccessKeyId = useSignal(options.get('minioAccessKeyId', ''));
   const minioSecretAccessKey = useSignal(options.get('minioSecretAccessKey', ''));
+  const lzcApiAuthToken = useSignal(options.get('lzcApiAuthToken', ''));
   const [showSettings, toggleSettings] = useToggle(false);
+  const [showBatchCapture, toggleBatchCapture] = useToggle(false);
 
   const styles = {
     subtitle: 'mb-2 text-base-content ml-4 opacity-50 font-semibold text-xs',
@@ -269,6 +272,18 @@ export function Settings() {
                   }}
                 />
               </label>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">{t('Lzc API Auth Token')}</span>
+                <input
+                  type="password"
+                  class="input input-bordered input-xs w-48"
+                  value={lzcApiAuthToken.value}
+                  onChange={(e) => {
+                    lzcApiAuthToken.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('lzcApiAuthToken', lzcApiAuthToken.value.trim());
+                  }}
+                />
+              </label>
             </Fragment>
           ) : (
             <Fragment>
@@ -347,6 +362,16 @@ export function Settings() {
             </button>
           </div>
         </div>
+        <p class={styles.subtitle}>{t('Manual Batch Capture')}</p>
+        <div class={cx(styles.block, 'flex-col')}>
+          <div class={styles.item}>
+            <span class="label-text whitespace-nowrap">{t('Run helper capture flow')}</span>
+            <button class="btn btn-xs btn-accent" onClick={toggleBatchCapture}>
+              <IconRefresh size={20} />
+              {t('Open')}
+            </button>
+          </div>
+        </div>
         {/* Enable or disable modules. */}
         <p class={styles.subtitle}>{t('Modules (Scroll to see more)')}</p>
         <div class={cx(styles.block, 'flex-col', 'max-h-44 overflow-scroll')}>
@@ -382,6 +407,7 @@ export function Settings() {
           </a>
         </div>
       </Modal>
+      <BatchCaptureModal show={showBatchCapture} onClose={toggleBatchCapture} />
     </Fragment>
   );
 }

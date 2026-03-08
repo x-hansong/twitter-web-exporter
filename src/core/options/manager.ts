@@ -24,6 +24,9 @@ export interface AppOptions {
   minioRegion?: string;
   minioAccessKeyId?: string;
   minioSecretAccessKey?: string;
+  lzcApiAuthToken?: string;
+  batchCaptureMaxOperations?: number;
+  batchCaptureScrollDistanceMultiplier?: number;
   version?: string;
 }
 
@@ -53,6 +56,9 @@ export const DEFAULT_APP_OPTIONS: AppOptions = {
   minioRegion: 'us-east-1',
   minioAccessKeyId: '',
   minioSecretAccessKey: '',
+  lzcApiAuthToken: '',
+  batchCaptureMaxOperations: 5000,
+  batchCaptureScrollDistanceMultiplier: 3,
   version: packageJson.version,
 };
 

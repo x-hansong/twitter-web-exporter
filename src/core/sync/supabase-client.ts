@@ -5,15 +5,15 @@ import logger from '@/utils/logger';
 let cachedClient: SupabaseClient | null = null;
 let cachedKey = '';
 
-export function getSupabaseClient(url: string, anonKey: string) {
-  const cacheKey = `${url}|${anonKey}`;
+export function getSupabaseClient(url: string, anonKey: string, lzcApiAuthToken = '') {
+  const cacheKey = `${url}|${anonKey}|${lzcApiAuthToken}`;
   if (cachedClient && cachedKey === cacheKey) {
     return cachedClient;
   }
 
   cachedClient = createClient(url, anonKey, {
     global: {
-      fetch: monkeyFetch,
+      fetch: (input, init) => monkeyFetch(input, init, lzcApiAuthToken),
     },
     auth: {
       persistSession: false,
@@ -26,7 +26,11 @@ export function getSupabaseClient(url: string, anonKey: string) {
   return cachedClient;
 }
 
-async function monkeyFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+async function monkeyFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  lzcApiAuthToken = '',
+): Promise<Response> {
   if (typeof GM_xmlhttpRequest !== 'function') {
     return fetch(input, init);
   }
@@ -36,6 +40,9 @@ async function monkeyFetch(input: RequestInfo | URL, init?: RequestInit): Promis
   request.headers.forEach((value, key) => {
     headerObj[key] = value;
   });
+  if (lzcApiAuthToken) {
+    headerObj['Lzc-Api-Auth-Token'] = lzcApiAuthToken;
+  }
   const bodyText =
     request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.text();
 
@@ -47,11 +54,24 @@ async function monkeyFetch(input: RequestInfo | URL, init?: RequestInit): Promis
       data: bodyText,
       responseType: 'text',
       onload: (resp) => {
+        const headers = parseHeaders(resp.responseHeaders || '');
+        const bodyText = resp.responseText ?? '';
+        const finalUrl = resp.finalUrl || request.url;
+
+        if (looksLikeHtmlErrorResponse(request.url, finalUrl, headers, bodyText)) {
+          reject(
+            new TypeError(
+              `Supabase request returned HTML instead of JSON. Check supabaseUrl or reverse proxy auth. request=${request.url} final=${finalUrl} status=${resp.status}`,
+            ),
+          );
+          return;
+        }
+
         resolve(
-          new Response(resp.responseText ?? '', {
+          new Response(bodyText, {
             status: resp.status,
             statusText: resp.statusText,
-            headers: parseHeaders(resp.responseHeaders || ''),
+            headers,
           }),
         );
       },
@@ -73,4 +93,28 @@ function parseHeaders(rawHeaders: string) {
     }
   }
   return headers;
+}
+
+function looksLikeHtmlErrorResponse(
+  requestUrl: string,
+  finalUrl: string,
+  headers: Headers,
+  bodyText: string,
+) {
+  const contentType = headers.get('content-type')?.toLowerCase() ?? '';
+  const trimmedBody = bodyText.trimStart().toLowerCase();
+  const isHtml =
+    contentType.includes('text/html') ||
+    trimmedBody.startsWith('<!doctype html') ||
+    trimmedBody.startsWith('<html');
+
+  if (!isHtml) {
+    return false;
+  }
+
+  // Supabase REST/Auth responses should be JSON in this client. HTML almost
+  // always means a proxy/login page intercepted the request.
+  return (
+    requestUrl !== finalUrl || requestUrl.includes('/rest/v1/') || requestUrl.includes('/auth/v1/')
+  );
 }

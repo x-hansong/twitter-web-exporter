@@ -154,11 +154,12 @@ export class SyncManager {
       if (backend === 'supabase') {
         const url = options.get('supabaseUrl', '')?.trim();
         const key = options.get('supabaseAnonKey', '')?.trim();
+        const lzcApiAuthToken = options.get('lzcApiAuthToken', '')?.trim() ?? '';
         if (!url || !key) {
           logger.warn('Sync skipped: Supabase URL or anon key is not configured');
           return;
         }
-        await this.syncSupabaseWithRetry(twitterUserId, url, key);
+        await this.syncSupabaseWithRetry(twitterUserId, url, key, lzcApiAuthToken);
       } else {
         const config = this.getMinioConfig();
         this.validateMinioConfig(config);
@@ -173,8 +174,9 @@ export class SyncManager {
       if (backend === 'supabase') {
         const url = options.get('supabaseUrl', '')?.trim();
         const key = options.get('supabaseAnonKey', '')?.trim();
+        const lzcApiAuthToken = options.get('lzcApiAuthToken', '')?.trim() ?? '';
         if (url && key) {
-          await this.upsertSyncStateError(twitterUserId, url, key, message);
+          await this.upsertSyncStateError(twitterUserId, url, key, lzcApiAuthToken, message);
         }
       } else {
         const config = this.getMinioConfig();
@@ -226,12 +228,17 @@ export class SyncManager {
     }
   }
 
-  private async syncSupabaseWithRetry(twitterUserId: string, url: string, key: string) {
+  private async syncSupabaseWithRetry(
+    twitterUserId: string,
+    url: string,
+    key: string,
+    lzcApiAuthToken: string,
+  ) {
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= SYNC_MAX_RETRIES; attempt++) {
       try {
-        await this.syncSupabaseOnce(twitterUserId, url, key);
+        await this.syncSupabaseOnce(twitterUserId, url, key, lzcApiAuthToken);
         return;
       } catch (error) {
         lastError = error as Error;
@@ -264,8 +271,13 @@ export class SyncManager {
     throw lastError ?? new Error('Unknown sync error');
   }
 
-  private async syncSupabaseOnce(twitterUserId: string, url: string, key: string) {
-    const supabase = getSupabaseClient(url, key);
+  private async syncSupabaseOnce(
+    twitterUserId: string,
+    url: string,
+    key: string,
+    lzcApiAuthToken: string,
+  ) {
+    const supabase = getSupabaseClient(url, key, lzcApiAuthToken);
     const lastSyncedAt = await this.getLastSyncedAt(supabase, twitterUserId);
 
     const [tweetRecords, userRecords] = await Promise.all([
@@ -301,26 +313,38 @@ export class SyncManager {
       ...users.map((user) => user.twe_private_fields.updated_at),
     );
 
-    await this.upsertTweets(getSupabaseClient(url, key), twitterUserId, tweets, now);
-    await this.upsertUsers(getSupabaseClient(url, key), twitterUserId, users, now);
+    await this.upsertTweets(
+      getSupabaseClient(url, key, lzcApiAuthToken),
+      twitterUserId,
+      tweets,
+      now,
+    );
+    await this.upsertUsers(getSupabaseClient(url, key, lzcApiAuthToken), twitterUserId, users, now);
 
     const captureDataKeys = [
       ...tweets.map((tweet) => tweet.rest_id),
       ...users.map((user) => user.rest_id),
     ];
     const captures = (await db.getCapturesByDataKeys(captureDataKeys)).sort(compareCapture);
-    await this.upsertCaptures(getSupabaseClient(url, key), twitterUserId, captures, now);
-
-    const { error: stateError } = await getSupabaseClient(url, key).from(TABLE_SYNC_STATE).upsert(
-      {
-        twitter_user_id: twitterUserId,
-        last_synced_at: maxUpdatedAt,
-        last_success_at: now,
-        last_error: null,
-        updated_at: now,
-      },
-      { onConflict: 'twitter_user_id' },
+    await this.upsertCaptures(
+      getSupabaseClient(url, key, lzcApiAuthToken),
+      twitterUserId,
+      captures,
+      now,
     );
+
+    const { error: stateError } = await getSupabaseClient(url, key, lzcApiAuthToken)
+      .from(TABLE_SYNC_STATE)
+      .upsert(
+        {
+          twitter_user_id: twitterUserId,
+          last_synced_at: maxUpdatedAt,
+          last_success_at: now,
+          last_error: null,
+          updated_at: now,
+        },
+        { onConflict: 'twitter_user_id' },
+      );
     if (stateError) {
       throw stateError;
     }
@@ -780,9 +804,10 @@ export class SyncManager {
     twitterUserId: string,
     url: string,
     key: string,
+    lzcApiAuthToken: string,
     message: string,
   ) {
-    const supabase = getSupabaseClient(url, key);
+    const supabase = getSupabaseClient(url, key, lzcApiAuthToken);
     const now = new Date().toISOString();
     const { error } = await supabase.from(TABLE_SYNC_STATE).upsert(
       {
