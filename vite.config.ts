@@ -57,6 +57,7 @@ export default defineConfig({
         match: ['*://twitter.com/*', '*://x.com/*', '*://mobile.x.com/*'],
         grant: ['unsafeWindow', 'GM_xmlhttpRequest'],
         connect: [
+          '*',
           'stormfire.heiyu.space',
           '*.supabase.co',
           '*.supabase.in',
