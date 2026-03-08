@@ -38,6 +38,7 @@
 - 🛠️ Ship as a UserScript and everything is done in your browser
 - 💾 Your data never leaves your computer
 - 💚 Completely free and open-source
+- ☁️ Optional personal cloud sync backends, including Supabase and MinIO
 
 ## Installation
 

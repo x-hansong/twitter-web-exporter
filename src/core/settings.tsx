@@ -28,8 +28,14 @@ export function Settings() {
 
   const currentTheme = useSignal(options.get('theme'));
   const syncEnabled = useSignal(!!options.get('syncEnabled'));
+  const syncBackend = useSignal(options.get('syncBackend', 'supabase'));
   const supabaseUrl = useSignal(options.get('supabaseUrl', ''));
   const supabaseAnonKey = useSignal(options.get('supabaseAnonKey', ''));
+  const minioEndpoint = useSignal(options.get('minioEndpoint', ''));
+  const minioBucket = useSignal(options.get('minioBucket', ''));
+  const minioRegion = useSignal(options.get('minioRegion', 'us-east-1'));
+  const minioAccessKeyId = useSignal(options.get('minioAccessKeyId', ''));
+  const minioSecretAccessKey = useSignal(options.get('minioSecretAccessKey', ''));
   const [showSettings, toggleSettings] = useToggle(false);
 
   const styles = {
@@ -207,10 +213,10 @@ export function Settings() {
             </div>
           </div>
         </div>
-        <p class={styles.subtitle}>{t('Supabase Sync')}</p>
+        <p class={styles.subtitle}>Cloud Sync</p>
         <div class={cx(styles.block, 'flex-col')}>
           <label class={styles.item}>
-            <span class="label-text whitespace-nowrap">{t('Enable Supabase Sync')}</span>
+            <span class="label-text whitespace-nowrap">Enable Sync</span>
             <input
               type="checkbox"
               class="toggle toggle-primary"
@@ -222,29 +228,112 @@ export function Settings() {
             />
           </label>
           <label class={styles.item}>
-            <span class="label-text whitespace-nowrap">{t('Supabase URL')}</span>
-            <input
-              type="text"
-              class="input input-bordered input-xs w-48"
-              value={supabaseUrl.value}
+            <span class="label-text whitespace-nowrap">Sync Backend</span>
+            <select
+              class="select select-xs"
+              value={syncBackend.value}
               onChange={(e) => {
-                supabaseUrl.value = (e.target as HTMLInputElement)?.value ?? '';
-                options.set('supabaseUrl', supabaseUrl.value.trim());
+                const nextBackend =
+                  (e.target as HTMLSelectElement)?.value === 'minio' ? 'minio' : 'supabase';
+                syncBackend.value = nextBackend;
+                options.set('syncBackend', nextBackend);
               }}
-            />
+            >
+              <option value="supabase">Supabase</option>
+              <option value="minio">MinIO</option>
+            </select>
           </label>
-          <label class={styles.item}>
-            <span class="label-text whitespace-nowrap">{t('Supabase Anon Key')}</span>
-            <input
-              type="password"
-              class="input input-bordered input-xs w-48"
-              value={supabaseAnonKey.value}
-              onChange={(e) => {
-                supabaseAnonKey.value = (e.target as HTMLInputElement)?.value ?? '';
-                options.set('supabaseAnonKey', supabaseAnonKey.value.trim());
-              }}
-            />
-          </label>
+          {syncBackend.value === 'supabase' ? (
+            <Fragment>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">{t('Supabase URL')}</span>
+                <input
+                  type="text"
+                  class="input input-bordered input-xs w-48"
+                  value={supabaseUrl.value}
+                  onChange={(e) => {
+                    supabaseUrl.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('supabaseUrl', supabaseUrl.value.trim());
+                  }}
+                />
+              </label>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">{t('Supabase Anon Key')}</span>
+                <input
+                  type="password"
+                  class="input input-bordered input-xs w-48"
+                  value={supabaseAnonKey.value}
+                  onChange={(e) => {
+                    supabaseAnonKey.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('supabaseAnonKey', supabaseAnonKey.value.trim());
+                  }}
+                />
+              </label>
+            </Fragment>
+          ) : (
+            <Fragment>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">MinIO Endpoint</span>
+                <input
+                  type="text"
+                  class="input input-bordered input-xs w-48"
+                  value={minioEndpoint.value}
+                  onChange={(e) => {
+                    minioEndpoint.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('minioEndpoint', minioEndpoint.value.trim());
+                  }}
+                />
+              </label>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">MinIO Bucket</span>
+                <input
+                  type="text"
+                  class="input input-bordered input-xs w-48"
+                  value={minioBucket.value}
+                  onChange={(e) => {
+                    minioBucket.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('minioBucket', minioBucket.value.trim());
+                  }}
+                />
+              </label>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">MinIO Region</span>
+                <input
+                  type="text"
+                  class="input input-bordered input-xs w-48"
+                  value={minioRegion.value}
+                  onChange={(e) => {
+                    minioRegion.value = (e.target as HTMLInputElement)?.value ?? 'us-east-1';
+                    options.set('minioRegion', minioRegion.value.trim() || 'us-east-1');
+                  }}
+                />
+              </label>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">MinIO Access Key ID</span>
+                <input
+                  type="password"
+                  class="input input-bordered input-xs w-48"
+                  value={minioAccessKeyId.value}
+                  onChange={(e) => {
+                    minioAccessKeyId.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('minioAccessKeyId', minioAccessKeyId.value.trim());
+                  }}
+                />
+              </label>
+              <label class={styles.item}>
+                <span class="label-text whitespace-nowrap">MinIO Secret Access Key</span>
+                <input
+                  type="password"
+                  class="input input-bordered input-xs w-48"
+                  value={minioSecretAccessKey.value}
+                  onChange={(e) => {
+                    minioSecretAccessKey.value = (e.target as HTMLInputElement)?.value ?? '';
+                    options.set('minioSecretAccessKey', minioSecretAccessKey.value.trim());
+                  }}
+                />
+              </label>
+            </Fragment>
+          )}
           <div class={styles.item}>
             <span class="label-text whitespace-nowrap">{t('Manual Sync')}</span>
             <button

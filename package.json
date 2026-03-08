@@ -23,6 +23,7 @@
     "@supabase/supabase-js": "^2.58.0",
     "@tabler/icons-preact": "3.31.0",
     "@tanstack/table-core": "8.21.2",
+    "aws4fetch": "^1.0.20",
     "dayjs": "1.11.13",
     "dexie": "4.0.11",
     "dexie-export-import": "4.1.4",

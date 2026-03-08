@@ -16,8 +16,14 @@ export interface AppOptions {
   language?: string;
   dedicatedDbForAccounts?: boolean;
   syncEnabled?: boolean;
+  syncBackend?: 'supabase' | 'minio';
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  minioEndpoint?: string;
+  minioBucket?: string;
+  minioRegion?: string;
+  minioAccessKeyId?: string;
+  minioSecretAccessKey?: string;
   version?: string;
 }
 
@@ -39,8 +45,14 @@ export const DEFAULT_APP_OPTIONS: AppOptions = {
   language: '',
   dedicatedDbForAccounts: false,
   syncEnabled: false,
+  syncBackend: 'supabase',
   supabaseUrl: '',
   supabaseAnonKey: '',
+  minioEndpoint: '',
+  minioBucket: '',
+  minioRegion: 'us-east-1',
+  minioAccessKeyId: '',
+  minioSecretAccessKey: '',
   version: packageJson.version,
 };
 
