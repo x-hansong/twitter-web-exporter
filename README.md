@@ -57,6 +57,8 @@ Click the ⚙️ Cog button to open the settings panel. You can change the UI th
 
 The settings panel also includes a manual batch capture helper for bookmarks and your own tweets. It can open the target page and auto-scroll with conservative pauses, while still relying on the Twitter/X web app to load data.
 
+The settings panel now also includes a browser migration flow. You can export a single migration package containing both your local database and the full app configuration, then import it in another browser to restore the same environment. Importing a migration package overwrites the current local database and settings, and the file may contain sensitive sync credentials or tokens, so store it carefully.
+
 Then open the page that you want to export data from. The script will automatically capture on the following pages:
 
 - User profile page (tweets, replies, media, likes)
@@ -110,6 +112,9 @@ A. The script can only export data that is loaded by the Twitter web app. Since 
 
 **Q. Can the exporting process be automated?** <br>
 A. Partially. The built-in manual batch helper can assist with auto-scrolling for bookmarks and your own tweets. For other workflows, you still need to browse and load the data manually, or use 3rd party tools. See [#120](https://github.com/prinsss/twitter-web-exporter/issues/120) for community solutions.
+
+**Q. Can I move my data and settings to another browser?** <br>
+A. Yes. Use the migration export/import actions in the settings panel. The migration file contains both the local database and the full settings snapshot. Importing it will overwrite the current browser's local database and settings.
 
 **Q. Do I need a developer account?** <br>
 A. No. The script does not send any request to Twitter API.
