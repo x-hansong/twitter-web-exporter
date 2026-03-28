@@ -187,6 +187,11 @@ export class DatabaseManager {
     return importInto(this.db, data).catch(this.logError);
   }
 
+  async replaceFromBlob(data: Blob) {
+    await this.clear();
+    return this.import(data);
+  }
+
   async clear() {
     await this.deleteAllCaptures();
     await this.deleteAllTweets();

@@ -7,6 +7,7 @@ import {
   extractTweetFullText,
   extractTweetMedia,
   extractTweetMediaTags,
+  extractTweetUserScreenName,
   formatTwitterImage,
   getMediaOriginalUrl,
   getTweetURL,
@@ -30,6 +31,12 @@ export interface TweetViewPayload {
   in_reply_to?: string;
   retweeted_status?: string;
   quoted_status?: string;
+  quoted_tweet?: {
+    full_text: string;
+    screen_name: string;
+    name: string;
+    url: string;
+  };
   media_tags: ReturnType<typeof extractTweetMediaTags>;
   favorite_count?: number;
   retweet_count?: number;
@@ -65,6 +72,16 @@ export function buildTweetViewPayload(tweet: Tweet): TweetViewPayload {
     in_reply_to: tweet.legacy?.in_reply_to_status_id_str,
     retweeted_status: extractRetweetedTweet(tweet)?.rest_id,
     quoted_status: extractQuotedTweet(tweet)?.rest_id,
+    quoted_tweet: (() => {
+      const qt = extractQuotedTweet(tweet);
+      if (!qt) return undefined;
+      return {
+        full_text: extractTweetFullText(qt),
+        screen_name: extractTweetUserScreenName(qt),
+        name: qt.core?.user_results?.result?.core?.name ?? '',
+        url: getTweetURL(qt),
+      };
+    })(),
     media_tags: extractTweetMediaTags(tweet),
     favorite_count: tweet.legacy?.favorite_count,
     retweet_count: tweet.legacy?.retweet_count,

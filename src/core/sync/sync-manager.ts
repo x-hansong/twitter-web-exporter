@@ -827,11 +827,18 @@ export class SyncManager {
     config: MinioConfig,
     message: string,
   ) {
+    const key = buildMinioStateKey(twitterUserId);
+    const now = new Date().toISOString();
+    let current: MinioSyncState | null = null;
+
     try {
       const client = new MinioClient(config);
-      const key = buildMinioStateKey(twitterUserId);
-      const current = await client.getJson<MinioSyncState>(key);
-      const now = new Date().toISOString();
+      try {
+        current = await client.getJson<MinioSyncState>(key);
+      } catch (error) {
+        logger.warn('Failed to read existing MinIO sync state before persisting error', error);
+      }
+
       await client.putJson(key, {
         version: 1,
         twitter_user_id: twitterUserId,

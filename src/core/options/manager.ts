@@ -99,9 +99,31 @@ export class AppOptionsManager {
     return this.appOptions[key] ?? defaultValue;
   }
 
+  public exportSnapshot() {
+    return { ...this.appOptions };
+  }
+
   public set<T extends keyof AppOptions>(key: T, value: AppOptions[T]) {
     this.appOptions[key] = value;
     this.saveAppOptions();
+  }
+
+  public replaceAll(nextOptions: AppOptions, notify = true) {
+    const normalized = {
+      ...DEFAULT_APP_OPTIONS,
+      ...nextOptions,
+      version: packageJson.version,
+    };
+
+    this.appOptions = normalized;
+    this.previous = { ...normalized };
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(normalized));
+
+    logger.debug('App options replaced', this.appOptions);
+
+    if (notify) {
+      this.signal.value++;
+    }
   }
 
   /**

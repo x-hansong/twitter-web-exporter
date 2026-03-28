@@ -1,11 +1,12 @@
 import { Fragment } from 'preact';
-import { useEffect } from 'preact/hooks';
+import { useEffect, useRef } from 'preact/hooks';
 import { useSignal } from '@preact/signals';
 import {
   IconSettings,
   IconBrandGithubFilled,
   IconHelp,
   IconDatabaseExport,
+  IconDatabaseImport,
   IconTrashX,
   IconReportAnalytics,
   IconRefresh,
@@ -21,6 +22,7 @@ import { saveFile } from '@/utils/exporter';
 
 import { db } from './database';
 import extensionManager from './extensions';
+import { migrationManager } from './migration';
 import { DEFAULT_APP_OPTIONS, options, THEMES } from './options';
 import { syncManager } from './sync';
 
@@ -38,6 +40,7 @@ export function Settings() {
   const minioAccessKeyId = useSignal(options.get('minioAccessKeyId', ''));
   const minioSecretAccessKey = useSignal(options.get('minioSecretAccessKey', ''));
   const lzcApiAuthToken = useSignal(options.get('lzcApiAuthToken', ''));
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [showSettings, toggleSettings] = useToggle(false);
   const [showBatchCapture, toggleBatchCapture] = useToggle(false);
 
@@ -53,6 +56,56 @@ export function Settings() {
       window.open(packageJson.homepage, '_blank');
     });
   }, []);
+
+  const onExportMigration = async () => {
+    try {
+      const blob = await migrationManager.exportPackage();
+      saveFile(`twitter-web-exporter-migration-${Date.now()}.json`, blob);
+      alert(t('Migration package exported.'));
+    } catch (error) {
+      alert(`${t('Failed to export migration package.')}\n\n${(error as Error).message}`);
+    }
+  };
+
+  const onImportMigration = async (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const parsed = await migrationManager.parsePackage(file);
+      const confirmed = confirm(
+        [
+          t(
+            'Importing this migration package will overwrite your current local database and settings.',
+          ),
+          t(
+            'The migration file contains sensitive configuration such as sync credentials and tokens.',
+          ),
+          t('Your browser will reload after a successful import.'),
+          '',
+          `${t('Exported at')}: ${parsed.exportedAt}`,
+          `${t('App Version')}: ${parsed.appVersion}`,
+          '',
+          t('Do you want to continue?'),
+        ].join('\n'),
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      await migrationManager.importPackage(file);
+      alert(t('Migration package imported. The page will now reload.'));
+      window.location.reload();
+    } catch (error) {
+      alert(`${t('Failed to import migration package.')}\n\n${(error as Error).message}`);
+    }
+  };
 
   return (
     <Fragment>
@@ -167,9 +220,9 @@ export function Settings() {
             <div class="flex items-center">
               <span class="label-text whitespace-nowrap">{t('Local Database')}</span>
             </div>
-            <div class="flex">
+            <div class="flex flex-wrap justify-end gap-2">
               <button
-                class="btn btn-xs btn-neutral mr-2"
+                class="btn btn-xs btn-neutral"
                 onClick={async () => {
                   let storageUsageText = 'Storage usage: N/A';
                   if (typeof navigator.storage.estimate === 'function') {
@@ -191,7 +244,7 @@ export function Settings() {
                 {t('Analyze DB')}
               </button>
               <button
-                class="btn btn-xs btn-primary mr-2"
+                class="btn btn-xs btn-primary"
                 onClick={async () => {
                   const blob = await db.export();
                   if (blob) {
@@ -201,6 +254,19 @@ export function Settings() {
               >
                 <IconDatabaseExport size={20} />
                 {t('Export DB')}
+              </button>
+              <button class="btn btn-xs btn-secondary" onClick={onExportMigration}>
+                <IconDatabaseExport size={20} />
+                {t('Export Migration')}
+              </button>
+              <button
+                class="btn btn-xs btn-secondary"
+                onClick={() => {
+                  importInputRef.current?.click();
+                }}
+              >
+                <IconDatabaseImport size={20} />
+                {t('Import Migration')}
               </button>
               <button
                 class="btn btn-xs btn-warning"
@@ -213,6 +279,13 @@ export function Settings() {
                 <IconTrashX size={20} />
                 {t('Clear DB')}
               </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                class="hidden"
+                onChange={onImportMigration}
+              />
             </div>
           </div>
         </div>

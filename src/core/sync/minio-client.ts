@@ -9,6 +9,20 @@ interface MinioClientOptions {
   secretAccessKey: string;
 }
 
+interface MinioResponse {
+  status: number;
+  statusText: string;
+  text: string;
+}
+
+interface MinioFailureResponse {
+  status?: number;
+  statusText?: string;
+  responseText?: string;
+  error?: string;
+  finalUrl?: string;
+}
+
 export class MinioClient {
   private readonly endpoint: string;
   private readonly bucket: string;
@@ -70,7 +84,7 @@ export class MinioClient {
         status: response.status,
         statusText: response.statusText,
         text: await response.text(),
-      };
+      } satisfies MinioResponse;
     }
 
     const requestHeaders: Record<string, string> = {};
@@ -78,8 +92,20 @@ export class MinioClient {
       requestHeaders[header] = value;
     });
 
-    return new Promise<{ status: number; statusText: string; text: string }>((resolve, reject) => {
-      GM_xmlhttpRequest({
+    return new Promise<MinioResponse>((resolve, reject) => {
+      const request = GM_xmlhttpRequest as unknown as (details: {
+        method: string;
+        url: string;
+        headers: Record<string, string>;
+        data?: string;
+        responseType: 'text';
+        onload: (resp: MinioFailureResponse & { status: number; statusText: string }) => void;
+        onerror?: (resp?: MinioFailureResponse) => void;
+        ontimeout?: (resp?: MinioFailureResponse) => void;
+        onabort?: (resp?: MinioFailureResponse) => void;
+      }) => void;
+
+      request({
         method,
         url: signedRequest.url,
         headers: requestHeaders,
@@ -91,16 +117,14 @@ export class MinioClient {
             statusText: resp.statusText,
             text: resp.responseText ?? '',
           }),
-        onerror: () => reject(new TypeError(`MinIO request failed for ${key}`)),
-        ontimeout: () => reject(new TypeError(`MinIO request timed out for ${key}`)),
+        onerror: (resp) => reject(this.buildRequestError(key, 'failed', resp)),
+        ontimeout: (resp) => reject(this.buildRequestError(key, 'timed out', resp)),
+        onabort: (resp) => reject(this.buildRequestError(key, 'aborted', resp)),
       });
     });
   }
 
-  private ensureSuccess(
-    response: { status: number; statusText: string; text: string },
-    key: string,
-  ) {
+  private ensureSuccess(response: MinioResponse, key: string) {
     if (response.status >= 200 && response.status < 300) {
       return;
     }
@@ -112,5 +136,22 @@ export class MinioClient {
 
   private buildUrl(key: string) {
     return `${this.endpoint}/${this.bucket}/${key.replace(/^\/+/g, '')}`;
+  }
+
+  private buildRequestError(
+    key: string,
+    reason: 'failed' | 'timed out' | 'aborted',
+    response?: MinioFailureResponse,
+  ) {
+    const details = [
+      typeof response?.status === 'number' ? `status=${response.status}` : null,
+      response?.statusText ? `statusText=${response.statusText}` : null,
+      response?.error ? `error=${response.error}` : null,
+      response?.finalUrl ? `url=${response.finalUrl}` : null,
+      response?.responseText ? `response=${response.responseText}` : null,
+    ].filter(Boolean);
+
+    const suffix = details.length > 0 ? ` (${details.join(', ')})` : '';
+    return new Error(`MinIO request ${reason} for ${key}${suffix}`);
   }
 }
